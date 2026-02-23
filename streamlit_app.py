@@ -59,7 +59,7 @@ if uploaded_file is not None:
     try:
         df = reader.read_csv(uploaded_file)
         st.subheader("Raw Feedback Data")
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width="stretch")
 
         if st.button("🚀 Run Processing Pipeline"):
             states = []
