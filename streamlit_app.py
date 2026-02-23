@@ -42,7 +42,7 @@ if not api_key:
 def init_components(_api_key, _llm_config):
     client = LLMClient(
         provider=_llm_config.get("provider", "google"),
-        model=_llm_config.get("model", "gemini-1.5-flash"),
+        model=_llm_config.get("model", "gemini-2.5-flash-lite"),
         api_key=_api_key
     )
     return Orchestrator(llm_client=client), TicketCreator(), CSVReader()
