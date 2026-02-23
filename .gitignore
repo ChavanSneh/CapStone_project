@@ -1,0 +1,16 @@
+# Sensitive Info
+config.yaml
+.env
+
+# Python Virtual Environment
+.venv/
+__pycache__/
+*.pyc
+
+# Local Data/Outputs
+output/
+*.csv
+
+# Mac/Windows system files
+.DS_Store
+Thumbs.db
