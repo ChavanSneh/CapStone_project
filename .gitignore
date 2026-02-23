@@ -14,3 +14,17 @@ output/
 # Mac/Windows system files
 .DS_Store
 Thumbs.db
+
+# Ignore the virtual environment (This is huge, we don't want this on GitHub)
+venv/
+.venv/
+env/
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+
+# Ignore your private secrets (IMPORTANT!)
+.streamlit/secrets.toml
+
+# DO NOT ignore the config file!
