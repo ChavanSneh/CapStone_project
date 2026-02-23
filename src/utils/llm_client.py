@@ -3,6 +3,7 @@ import os
 import yaml
 import json
 import time
+import streamlit as st  # Added for Cloud Secrets
 from src.utils.logger import logger
 
 class LLMClient:
@@ -10,12 +11,19 @@ class LLMClient:
         config_data = self._load_config(config_path)
         llm_config = config_data.get('llm', {})
 
-        # Switching to 'gemini-2.5-flash-lite' to use your 10 RPM quota
+        # 1. Set Model Name (Prioritize manual input -> config -> default)
         self.model_name = model or llm_config.get('model') or "gemini-2.5-flash-lite"
         
-        self.api_key = api_key or config_data.get('google_api_key') or llm_config.get('api_key') or os.getenv("GOOGLE_API_KEY")
+        # 2. Key Hierarchy: Manual Arg -> Streamlit Secrets (Cloud) -> Config File -> Env Var
+        self.api_key = (
+            api_key or 
+            st.secrets.get("GEMINI_API_KEY") or 
+            config_data.get('google_api_key') or 
+            llm_config.get('api_key') or 
+            os.getenv("GOOGLE_API_KEY")
+        )
         
-        # 2026 v1beta endpoint
+        # 3. 2026 v1beta endpoint
         self.url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
 
     def _load_config(self, path):
@@ -30,9 +38,8 @@ class LLMClient:
 
     def generate(self, prompt: str) -> str:
         if not self.api_key:
-            return "ERROR: API Key Missing"
+            return "ERROR: API Key Missing. Check Streamlit Secrets or config.yaml"
         
-        # 3 Retries for 429 errors
         for attempt in range(3):
             try:
                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
@@ -47,7 +54,7 @@ class LLMClient:
                     return "ERROR: No text in response"
                 
                 elif response.status_code == 429:
-                    wait = (attempt + 1) * 5 # Wait 5s, 10s, 15s
+                    wait = (attempt + 1) * 5 # 5s, 10s, 15s
                     logger.warning(f"Quota Hit (429). Cooling down for {wait}s...")
                     time.sleep(wait)
                     continue
