@@ -1,3 +1,4 @@
+import streamlit as st
 import requests
 import os
 import yaml
@@ -5,19 +6,25 @@ import json
 from src.utils.logger import logger
 
 class LLMClient:
-    def __init__(self, provider="google", api_key=None, config_path="config.yaml", model="gemini-2.0-flash"):
-        """
-        The __init__ method must have this code to store your API key 
-        and setup the connection URL.
-        """
-        self.model_name = model
-        
-        # Priority: 1. Direct Argument -> 2. YAML File -> 3. ENV Variable
-        self.api_key = api_key or self._load_api_key(config_path) or os.getenv("GOOGLE_API_KEY")
-        
-        # This URL is what actually talks to the Gemini 2.0/2.5 API
-        self.url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
+    def __init__(self, provider="google", api_key=None, config_path="config.yaml", model=None):
+        config_data = self._load_config(config_path)
+        llm_config = config_data.get('llm', {})
 
+        # Priority: 1. Manual Arg -> 2. Streamlit Cloud Secret -> 3. Config File -> 4. Env Var
+        self.api_key = (
+            api_key or 
+            st.secrets.get("GEMINI_API_KEY") or 
+            llm_config.get('api_key') or 
+            config_data.get('google_api_key') or 
+            os.getenv("GOOGLE_API_KEY")
+        )
+        
+        if not self.api_key:
+            st.error("Missing API Key! Please add GEMINI_API_KEY to Streamlit Secrets or config.yaml")
+            return
+
+        self.model_name = model or llm_config.get('model') or "gemini-1.5-flash"
+        self.url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
     def _load_api_key(self, path):
         """Helper to pull the key from config.yaml if it exists"""
         try:

@@ -31,7 +31,10 @@ class LLMClient:
             if os.path.exists(path):
                 with open(path, 'r') as f:
                     return yaml.safe_load(f) or {}
-            return {}
+            else:
+                # Instead of crashing, we just log a warning and return an empty dict
+                logger.warning(f"Config file {path} not found. Falling back to Environment/Secrets.")
+                return {}
         except Exception as e:
             logger.error(f"LLMClient: Config load failed: {e}")
             return {}
