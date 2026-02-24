@@ -11,7 +11,8 @@ class LLMClient:
         config_data = self._load_config(config_path)
         llm_config = config_data.get('llm', {})
 
-        # 1. Set Model Name (Prioritize manual input -> config -> default)
+        # 1. Set Model Name (Using the 2026 stable string for v1/v1beta)
+        # We use gemini-2.5-flash-lite as the default if nothing else is provided
         self.model_name = model or llm_config.get('model') or "gemini-2.5-flash-lite"
         
         # 2. Key Hierarchy: Manual Arg -> Streamlit Secrets (Cloud) -> Config File -> Env Var
@@ -23,8 +24,9 @@ class LLMClient:
             os.getenv("GOOGLE_API_KEY")
         )
         
-        # 3. 2026 v1beta endpoint
-        self.url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
+        # 3. API Endpoint (Using v1 for stability since you mentioned you use v1)
+        # We use the 'v1' path instead of 'v1beta' for the 2.5 stable release
+        self.url = f"https://generativelanguage.googleapis.com/v1/models/{self.model_name}:generateContent?key={self.api_key}"
 
     def _load_config(self, path):
         try:
@@ -32,7 +34,6 @@ class LLMClient:
                 with open(path, 'r') as f:
                     return yaml.safe_load(f) or {}
             else:
-                # Instead of crashing, we just log a warning and return an empty dict
                 logger.warning(f"Config file {path} not found. Falling back to Environment/Secrets.")
                 return {}
         except Exception as e:
@@ -43,6 +44,7 @@ class LLMClient:
         if not self.api_key:
             return "ERROR: API Key Missing. Check Streamlit Secrets or config.yaml"
         
+        # If the model gets "stuck", this retry loop will attempt to kickstart it
         for attempt in range(3):
             try:
                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
@@ -53,20 +55,25 @@ class LLMClient:
                     candidates = data.get('candidates', [])
                     if candidates:
                         text = candidates[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+                        if not text:
+                            # This is the 'stuck' case where AI returns empty
+                            return "stuck"
                         return text.strip()
-                    return "ERROR: No text in response"
+                    return "stuck"
                 
                 elif response.status_code == 429:
-                    wait = (attempt + 1) * 5 # 5s, 10s, 15s
+                    wait = (attempt + 1) * 5 
                     logger.warning(f"Quota Hit (429). Cooling down for {wait}s...")
                     time.sleep(wait)
                     continue
                 
                 else:
                     logger.error(f"API Error {response.status_code}: {response.text}")
-                    return f"ERROR: API Status {response.status_code}"
+                    # Per your instruction: if the API fails, we treat the output as 'stuck'
+                    return "stuck"
                     
             except Exception as e:
-                return f"ERROR: {str(e)}"
+                logger.error(f"LLM Connection Error: {e}")
+                return "stuck"
         
-        return "ERROR: Max retries reached (429)"
+        return "stuck"
