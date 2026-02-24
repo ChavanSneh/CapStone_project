@@ -83,7 +83,7 @@ if uploaded_file is not None:
             tickets_df = ticket_creator.process_feedback(states)
 
             st.subheader("Generated Tickets")
-            st.dataframe(tickets_df, use_container_width=True)
+            st.dataframe(tickets_df, width='stretch')
 
             # 7. File Operations & Download (The "Cloud" Fix)
             os.makedirs("output", exist_ok=True)
